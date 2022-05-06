@@ -30,9 +30,12 @@ async def wallpaper(ctx, *search):
         rq = requests.get(f"https://wallpapersmug.com/w/wallpaper?search={search}")
     soup = bs(rq.text, 'html.parser')
     res = soup.find_all("img")
-    first = res[1]['src']
-    sec = first.replace("thumb", "download/1920x1080")
-    await ctx.send(sec)
+    try : 
+        first = res[1]['src']
+        sec = first.replace("thumb", "download/1920x1080")
+        await ctx.send(sec)
+    except IndexError :
+        await ctx.send("No result for that research")
 
 
 # @tasks.loop(minutes=1)
