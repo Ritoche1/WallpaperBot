@@ -37,6 +37,15 @@ async def wallpaper(ctx, *search):
     except IndexError :
         await ctx.send("No result for that research")
 
+@bot.command(brief="random wallpaper")
+async def random(ctx):
+    rq = requests.get("https://wallpapersmug.com/w/wallpaper/random")
+    soup = bs(rq.text, 'html.parser')
+    res = soup.find_all("img")
+    first = res[1]['src']
+    sec = first.replace("thumb", "download/1920x1080")
+    await ctx.send(sec)
+
 
 # @tasks.loop(minutes=1)
 # async def send_random_cartoon():
