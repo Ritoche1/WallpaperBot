@@ -1,95 +1,80 @@
 #!/usr/bin/env python3
-
-
-from asyncio import tasks
-from dataclasses import replace
 import discord
 from discord import Embed, Intents, Client
 from discord.ext import commands, tasks
 from discord.ext.commands import Bot
-import requests
+from discord_ui import Components, Button, UI, ButtonInteraction
 import json
-import random as rd
-from datetime import datetime
-from bs4 import BeautifulSoup as bs
 from discord_slash import SlashCommand, SlashContext
 
-intents = discord.Intents.default()
-intents.members = True
-bot = commands.Bot(command_prefix='$', intents=intents, description="$help")
+
+from tools import Photo, getDataFromId
+
+# intents = discord.Intents.default()
+# intents.members = True
+# bot = commands.Bot(command_prefix='$', intents=intents)
 # slash = SlashCommand(bot)
 
-# bot = Bot(command_prefix="$", self_bot=True, intents=Intents.default())
-# slash = SlashCommand(bot, sync_commands=True)
+bot = Bot(command_prefix="$", self_bot=True, intents=Intents.default())
+slash = SlashCommand(bot, sync_commands=True)
+ui = UI(bot)
 
 data = json.load(open('config.json'))
 
 @bot.event
 async def on_ready():
     print('Logged in as', bot.user.name, bot.user.id)
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="$help"))
-
-@bot.command(brief="get a wallpaper from a search")
-async def wallpaper(ctx, *search):
-    search = ' '.join(search)
-    if search == None :
-        rq = requests.get("https://wallpapersmug.com/")
-    else :
-        rq = requests.get(f"https://wallpapersmug.com/w/wallpaper?search={search}")
-    soup = bs(rq.text, 'html.parser')
-    res = soup.find_all("img")
-    try : 
-        i = rd.randint(0, len(res)-2)
-        first = res[i+1]['src']
-        sec = first.replace("thumb", "download/1920x1080")
-        await ctx.send(sec)
-    except IndexError :
-        await ctx.send("No result for that research")
-
-@bot.command(brief="random wallpaper")
-async def random(ctx):
-    rq = requests.get("https://wallpapersmug.com/w/wallpaper/random")
-    soup = bs(rq.text, 'html.parser')
-    res = soup.find_all("img")
-    first = res[1]['src']
-    sec = first.replace("thumb", "download/1920x1080")
-    await ctx.send(sec)
 
 
-# @slash.slash(name="test",description="test", guild_ids=[688900872239054888])
-# async def _test(ctx: SlashContext):
-#     await ctx.send("hello")
+photo_data = []
 
 
-# @slash.slash(name="wallpaper", description="get a wallpaper with your search", guild_ids=[688900872239054888, 961541109736177674])
-# async def wallpaper(ctx: SlashContext, wanted):
-#     key = data['API_KEY_PIXABAY'] 
-#     print(wanted)
-#     search = wanted.replace(' ', '+')
-#     print(search)
-#     if search == None :
-#         rq = requests.get("https://pixabay.com/api/?key="+key+"&image_type=photo&safe_search=true")
-#     else :
-#         rq = requests.get(f"https://pixabay.com/api/?key="+key+"&image_type=photo&safe_search=true&q={search}")
-#     json = rq.json()
-#     try :
-#         i = rd.randint(0, len(json['hits'])-1)
-#         first = json['hits'][i]['largeImageURL']
-#         await ctx.send(first)
-#     except IndexError :
-#         search = ' '.join(wanted)
-#         rq = requests.get(f"https://wallpapersmug.com/w/wallpaper?search={search}")
-#         soup = bs(rq.text, 'html.parser')
-#         res = soup.find_all("img")
-#         try : 
-#             first = res[1]['src']
-#             sec = first.replace("thumb", "download/1920x1080")
-#             await ctx.send(sec)
-#         except IndexError :
-#             await ctx.send("No result for that research")
+@slash.slash(name="wallpaper", description="Get wallpaper from search")
+async def _wallpaper(ctx: SlashContext, search: str):
+    photo = Photo()
+    photo.setPhotoFromSearch(search)
+    embed = photo.getEmbedPhotoFromPage(0)
+    button1 = Button(label="Previous", emoji="⬅", custom_id="previous")
+    button2 = Button(label="Next", emoji="➡", custom_id="next")
+    tmp = await ui.components.send(ctx.channel, embed=embed, components=[button1, button2])
+    photo_data.append({
+        "message_id": tmp.id,
+        "photo" : photo
+    })
 
-# @tasks.loop(minutes=1)
-# async def send_random_cartoon():
-#    pass
+@slash.slash(name="random", description="Get random wallpaper")
+async def _random(ctx: SlashContext):
+    photo = Photo()
+    photo.setPhotoRandom()
+    embed = photo.getEmbedPhotoFromPage(0)
+    await ctx.send(embed=embed)
+
+
+@bot.listen("on_button")
+async def on_button(btn: ButtonInteraction):
+    custom_id = btn.data['custom_id']
+    photo = getDataFromId(photo_data, btn.message.id)
+    tmp_message = btn.message
+    if custom_id == "previous":
+        if (photo.page - 1) >= 0:
+            photo.setPage(photo.getPage() - 1)
+            embed = photo.getEmbedPhotoFromPage(photo.getPage())
+            await tmp_message.edit(embed=embed)
+        else:
+            photo.setPage(len(photo.url) - 1)
+            embed = photo.getEmbedPhotoFromPage(photo.getPage())
+            await tmp_message.edit(embed=embed)
+    elif custom_id == "next":
+        if (photo.page + 1) < len(photo.url):
+            photo.setPage(photo.getPage() + 1)
+            embed = photo.getEmbedPhotoFromPage(photo.getPage())
+            await tmp_message.edit(embed=embed)
+        else:
+            photo.setPage(0)
+            embed = photo.getEmbedPhotoFromPage(photo.getPage())
+            await tmp_message.edit(embed=embed)
+    await btn.respond(ninja_mode=True)
+    
+
 
 bot.run(data['TOKEN'])

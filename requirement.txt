@@ -1,6 +1,7 @@
 discord-py-interactions
 discord.py
 discord
-beautifulsoup4
+discord-ext-bot
 requests
+json2json
 discord-py-slash-command
