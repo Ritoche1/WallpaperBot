@@ -10,36 +10,42 @@ class Photo :
     def __init__(self) :
         self.url = []
         self.download = []
+        self.link = []
         self.description = []
         self.alt_description = []
         self.author = []
+        self.authorPP = []
         self.page = 0
     def setPhotoRandom(self) -> None:
         apiKey = data['API_KEY']
         rq = requests.get(f"https://api.unsplash.com/photos/random?client_id={apiKey}&orientation=landscape")
         self.url.append(rq.json()['urls']['regular'])
         self.download.append(rq.json()['links']['download'])
+        self.link.append(rq.json()['links']['html'])
         self.description.append(rq.json()['description'])
         self.alt_description.append(rq.json()['alt_description'])
         self.author.append(rq.json()['user']['username'])
+        self.authorPP.append(rq.json()['user']['profile_image']['small'])
     def setPhotoFromSearch(self, search) -> None:
         apiKey = data['API_KEY']
         rq = requests.get(f"https://api.unsplash.com/search/photos/?query={search}&client_id={apiKey}&orientation=landscape")
         for photo in rq.json()['results']:
             self.url.append(photo['urls']['regular'])
             self.download.append(photo['links']['download'])
+            self.link.append(photo['links']['html'])
             self.description.append(photo['description'])
             self.alt_description.append(photo['alt_description'])
             self.author.append(photo['user']['username'])
+            self.authorPP.append(photo['user']['profile_image']['small'])
     def getEmbedPhotoFromPage(self, page) -> Embed:
         if self.description[page] != None and len(self.description[page]) > 256 :
             description = self.description[page][:250] + "..."
         else :
             description = self.description[page]
-        embed = Embed(title=description, description=self.alt_description[page], color=0x2f1376)
+        embed = Embed(title=description, description=self.alt_description[page], color=0x2f1376, url=self.link[page])
         embed.set_image(url=self.url[page])
         embed.add_field(name="Author", value=self.author[page], inline=False)
-        embed.set_footer(text=f"Page {page + 1} / {len(self.url)}")
+        embed.set_footer(text=f"Page {page + 1} / {len(self.url)}", icon_url=self.authorPP[page])
         return (embed)
     def getPage(self) -> int:
         return (self.page)

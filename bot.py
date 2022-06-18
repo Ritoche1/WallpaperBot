@@ -41,6 +41,7 @@ async def _wallpaper(ctx: SlashContext, search: str):
         "message_id": tmp.id,
         "photo" : photo
     })
+    await ctx.reply(content="Done", delete_after=1)
 
 @slash.slash(name="random", description="Get random wallpaper")
 async def _random(ctx: SlashContext):
